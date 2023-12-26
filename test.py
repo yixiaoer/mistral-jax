@@ -1,7 +1,10 @@
-import jax
-from transformers import AutoTokenizer, AutoModelForCausalLM
+import os; os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
+import jax; jax.config.update('jax_default_matmul_precision', jax.lax.Precision.HIGHEST)
 
-print(jax.devices())
+from lib.attention import test_forward_attention
 
-tokenizer = AutoTokenizer.from_pretrained('mistralai/Mistral-7B-v0.1')
-model = AutoModelForCausalLM.from_pretrained('mistralai/Mistral-7B-v0.1')
+def main():
+    test_forward_attention()
+
+if __name__ == '__main__':
+    main()

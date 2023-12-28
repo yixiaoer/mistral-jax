@@ -5,7 +5,6 @@ from transformers import MistralForCausalLM
 from transformers.models.mistral.modeling_mistral import MistralDecoderLayer
 
 from .attention import AttentionParams, convert_attention_params, forward_attention
-from .decoder_block import DecoderBlockParams
 from .rms_norm import RMSNormParams, convert_rms_norm_params, forward_rms_norm
 from .mlp_layer import MLPLayerParams, convert_mlp_layer_params, forward_mlp_layer
 
@@ -36,3 +35,6 @@ def forward_decoder_block(params: DecoderBlockParams, seq: Array, qk_mask: Array
     seq += seq_
 
     return seq
+
+def test_forward_decoder_block(model: MistralForCausalLM) -> None:
+    pass

@@ -5,7 +5,7 @@ import jax
 from jax import Array
 import jax.numpy as jnp
 
-# # TODO: eliminate this
+# TODO: eliminate this
 d_k = 128
 
 # TODO: Mostly taken from https://github.com/kingoflolz/mesh-transformer-jax/blob/master/mesh_transformer/layers.py

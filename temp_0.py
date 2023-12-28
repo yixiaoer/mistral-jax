@@ -16,7 +16,7 @@ import numpy as np
 import math
 
 from lib.array_conversion import pt2jax, jax2pt_noncopy
-from lib.temp_rotary_embedding import _make_weights, make_rotary_values, forward_rotary_embedding
+from lib.rotary_embedding import _make_weights, make_rotary_values, forward_rotary_embedding
 
 print(jax.devices())
 

@@ -14,8 +14,8 @@ def convert_embedding_params(embedding: TorchEmbedding) -> EmbeddingParams:
 def convert_back_embedding_params():
     pass
 
-def forward_embedding(param: EmbeddingParams, input_ids: Array) -> Array:
-    return param[input_ids]
+def forward_embedding(params: EmbeddingParams, input_ids: Array) -> Array:
+    return params[input_ids]
 
 def test_forward_embedding(model: MistralForCausalLM) -> None:
     embedding_pt = model.model.embed_tokens

@@ -9,7 +9,7 @@ from transformers import MistralForCausalLM
 from transformers.models.mistral.modeling_mistral import MistralAttention
 
 from .array_conversion import pt2jax
-from .temp_rotary_embedding import make_rotary_values, forward_rotary_embedding
+from .rotary_embedding import make_rotary_values, forward_rotary_embedding
 
 # TODO: eliminate this
 d_model = 4096
@@ -37,7 +37,7 @@ def convert_back_attention_params():
 
 def forward_attention(params: AttentionParams, seq: Array, qk_mask: Array) -> Array:
     q_proj_jax, k_proj_jax, v_proj_jax, out_proj_jax = params
-    
+
     # for q, the seq is src_seq, 
     # for k and v, the seq is des_seq,
     # in self_atten the src_ and des_seq are the same

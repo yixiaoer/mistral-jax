@@ -1,6 +1,7 @@
 import jax
 from jax import Array
 import jax.numpy as jnp
+from transformers import MistralForCausalLM
 from transformers.models.mistral.modeling_mistral import MistralRMSNorm
 
 from .array_conversion import pt2jax
@@ -23,3 +24,6 @@ def forward_rms_norm(params: RMSNormParams, x: Array) -> Array:
     x_rms = jnp.sqrt((x * x).mean(axis=-1, keepdims=True) + rms_norm_eps)
     y = x / x_rms * params
     return y
+
+def test_forward_rms_norm(model: MistralForCausalLM) -> None:
+    pass

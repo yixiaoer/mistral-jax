@@ -1,5 +1,5 @@
+mypy
 jax
 torch
 transformers
-
-mypy
+einops

@@ -2,15 +2,17 @@
 
 ## Install
 
-This project requires JAX 0.4.20.
+This project requires Python 3.11, JAX 0.4.20.
 
 Create venv:
 
 ```sh
-python -m venv venv
+python3.11 -m venv venv
 ```
 
 Install dependencies:
+
+CPU:
 
 ```sh
 pip install -U pip
@@ -26,8 +28,20 @@ CUDA 11:
 ```sh
 pip install -U pip
 pip install -U wheel
-pip install -U "jax[cuda11_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-pip3 install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu118
+pip install "jax[cuda11_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu118
+pip install git+https://github.com/huggingface/transformers
+pip install -r requirements.txt
+```
+
+TPU VM:
+
+```sh
+pip install -U pip
+pip install -U wheel
+pip install "jax[tpu]" -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
+pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cpu
+pip install git+https://github.com/huggingface/transformers
 pip install -r requirements.txt
 ```
 

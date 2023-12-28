@@ -4,6 +4,7 @@ import einops as op
 from jax import Array
 import jax.numpy as jnp
 import jax.nn as nn
+from transformers import MistralForCausalLM
 from transformers.models.mistral.modeling_mistral import MistralAttention
 
 from .array_conversion import pt2jax
@@ -68,18 +69,16 @@ def forward_attention(params: AttentionParams, seq: Array, qk_mask: Array) -> Ar
     # out.shape: (1, 6, 4096); qkv (1, 4, 8, 6, 128); out_proj_jax.shape (4, 8, 128, 4096)
     return out
 
-def test_forward_attention():
-    import torch
-    from transformers import MistralForCausalLM
 
-    model = MistralForCausalLM.from_pretrained('mistralai/Mistral-7B-v0.1').to('cuda:1')  # JAX uses cuda:0
+def test_forward_attention(model: MistralForCausalLM) -> None:
+    import torch
 
     batch_size = 1
     seq_len = 6
 
     self_attn_torch = model.model.layers[0].self_attn
-    seq_torch = torch.rand(batch_size, seq_len, d_model, device='cuda:1')
-    attention_mask_torch = torch.tril(torch.ones(batch_size, 1, seq_len, seq_len, dtype=torch.bool, device='cuda:1'))
+    seq_torch = torch.rand(batch_size, seq_len, d_model, device=model.device)
+    attention_mask_torch = torch.tril(torch.ones(batch_size, 1, seq_len, seq_len, dtype=torch.bool, device=model.device))
     attention_mask_torch_ = torch.where(attention_mask_torch, 0., -torch.inf)
 
     out_torch = self_attn_torch(seq_torch, attention_mask=attention_mask_torch_)[0]

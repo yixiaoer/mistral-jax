@@ -1,5 +1,15 @@
 # Mistral JAX
 
+## Roadmap
+
+- [x] Model architecture
+- [ ] Publish a Python library
+- [ ] Model parallelism
+- [ ] Generation
+    - [ ] KV cache
+    - [ ] Sampling
+- [ ] Training
+
 ## Install
 
 This project requires Python 3.11, JAX 0.4.20.

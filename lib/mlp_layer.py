@@ -1,7 +1,6 @@
 import jax
 from jax import Array
 import jax.numpy as jnp
-import torch
 from transformers import MistralForCausalLM
 from transformers.models.mistral.modeling_mistral import MistralMLP
 
@@ -15,7 +14,8 @@ def convert_mlp_layer_params(mlp_layer: MistralMLP) -> MLPLayerParams:
     down_proj = pt2jax(mlp_layer.down_proj.weight.data.T)
     return gate_proj, up_proj, down_proj
 
-def convert_back_mlp_layer_params():
+def convert_back_mlp_layer_params(mlp_layer: MLPLayerParams) -> MistralMLP:
+    # mlp_layer_pt = MistralMLP(config_pt)  # TODO: handle config
     pass
 
 def forward_mlp_layer(params: MLPLayerParams, seq: Array) -> Array:

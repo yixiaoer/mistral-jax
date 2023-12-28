@@ -1,6 +1,5 @@
 from jax import Array
 import jax.numpy as jnp
-import torch
 from transformers import MistralForCausalLM
 from transformers.models.mistral.modeling_mistral import MistralDecoderLayer
 

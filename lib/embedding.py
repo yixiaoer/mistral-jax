@@ -1,33 +1,30 @@
+from jax import Array
+import jax.numpy as jnp
 import torch
+from torch.nn import Embedding as TorchEmbedding
 from transformers import MistralForCausalLM
 
-from .array_conversion import pt2jax, jax2pt_noncopy
+from .array_conversion import pt2jax
 
-# TODO delete it later
-model = MistralForCausalLM.from_pretrained('mistralai/Mistral-7B-v0.1')
+EmbeddingParams = Array
 
+def convert_embedding_params(embedding: TorchEmbedding) -> EmbeddingParams:
+    return pt2jax(embedding.weight.data)
 
-def forward_embedding(param, input_ids):
+def convert_back_embedding_params():
+    pass
+
+def forward_embedding(param: EmbeddingParams, input_ids: Array) -> Array:
     return param[input_ids]
 
-def test_embedding_correct():
-    # model
-    # type(model): class 'transformers.models.mistral.modeling_mistral.MistralForCausalLM'
-    # model.model
-    # type(model.model): class 'transformers.models.mistral.modeling_mistral.MistralModel'
-    embedding_torch = model.model.embed_tokens
-    embedding_jax = pt2jax(embedding_torch.weight.data)
-    input_ids_torch = torch.tensor([1, 20, 3, 5, 2, 7], dtype=torch.int32)
-    input_ids_jax = pt2jax(input_ids_torch)
+def test_forward_embedding(model: MistralForCausalLM) -> None:
+    embedding_pt = model.model.embed_tokens
+    input_ids_pt = torch.tensor([1, 20, 3, 5, 2, 7], dtype=torch.int32)
+    result_pt = embedding_pt(input_ids_pt)
+    result_pt_to_jax = pt2jax(result_pt)
 
-    result_torch = embedding_torch(input_ids_torch)
-    result_jax = forward_embedding(embedding_jax, input_ids_jax)
-    result_jax_to_torch = jax2pt_noncopy(result_jax)
+    params = convert_embedding_params(embedding_pt)
+    input_ids_jax = pt2jax(input_ids_pt)
+    result_jax = forward_embedding(params, input_ids_jax)
 
-    # element wise comparision
-    # result_torch == result_jax_to_torch
-    # torch.equal() is a precious comparision
-    # torch.equal(result_torch, result_jax_to_torch)
-    # use torch.allclose() to give slight tolorance
-    assert torch.allclose(result_torch, result_jax_to_torch)
-
+    assert jnp.allclose(result_pt_to_jax, result_jax, atol=1e-5)

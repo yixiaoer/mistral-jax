@@ -1,9 +1,10 @@
 import math
 
 import einops as op
+import jax
 from jax import Array
 import jax.numpy as jnp
-import jax.nn as nn
+import torch
 from transformers import MistralForCausalLM
 from transformers.models.mistral.modeling_mistral import MistralAttention
 
@@ -18,16 +19,16 @@ d_k = d_v = 128
 
 AttentionParams = tuple[Array, Array, Array, Array]
 
-def convert_attention_params(self_attn_torch: MistralAttention) -> AttentionParams:
-    q_proj_torch = self_attn_torch.q_proj.weight.data
-    k_proj_torch = self_attn_torch.k_proj.weight.data
-    v_proj_torch = self_attn_torch.v_proj.weight.data
-    o_proj_torch = self_attn_torch.o_proj.weight.data
+def convert_attention_params(self_attn: MistralAttention) -> AttentionParams:
+    q_proj = self_attn.q_proj.weight.data
+    k_proj = self_attn.k_proj.weight.data
+    v_proj = self_attn.v_proj.weight.data
+    o_proj = self_attn.o_proj.weight.data
     
-    q_proj_jax = pt2jax(q_proj_torch.T).reshape(d_model, n_heads_kv, n_rep_kv, d_k).transpose(0, 2, 1, 3)
-    k_proj_jax = pt2jax(k_proj_torch.T).reshape(d_model, n_heads_kv, d_k)
-    v_proj_jax = pt2jax(v_proj_torch.T).reshape(d_model, n_heads_kv, d_v)
-    out_proj_jax = pt2jax(o_proj_torch.T).reshape(n_heads_kv, n_rep_kv, d_v, d_model).transpose(1, 0, 2, 3)
+    q_proj_jax = pt2jax(q_proj.T).reshape(d_model, n_heads_kv, n_rep_kv, d_k).transpose(0, 2, 1, 3)
+    k_proj_jax = pt2jax(k_proj.T).reshape(d_model, n_heads_kv, d_k)
+    v_proj_jax = pt2jax(v_proj.T).reshape(d_model, n_heads_kv, d_v)
+    out_proj_jax = pt2jax(o_proj.T).reshape(n_heads_kv, n_rep_kv, d_v, d_model).transpose(1, 0, 2, 3)
 
     return q_proj_jax, k_proj_jax, v_proj_jax, out_proj_jax
 
@@ -61,7 +62,7 @@ def forward_attention(params: AttentionParams, seq: Array, qk_mask: Array) -> Ar
     # Scaled Dot-Product Attention as 3.2.1 equation(1) in orginal Transformer paper
     qk = jnp.einsum('brhsk,bhdk->brhsd', q, k) / math.sqrt(d_k)
 
-    qk = nn.softmax(qk, where=qk_mask, initial=0.)
+    qk = jax.nn.softmax(qk, where=qk_mask, initial=0.)
 
     qkv = jnp.einsum('brhsd,bhdv->brhsv', qk, v)
     # (1, 4, 8, 6, 128)
@@ -69,24 +70,21 @@ def forward_attention(params: AttentionParams, seq: Array, qk_mask: Array) -> Ar
     # out.shape: (1, 6, 4096); qkv (1, 4, 8, 6, 128); out_proj_jax.shape (4, 8, 128, 4096)
     return out
 
-
 def test_forward_attention(model: MistralForCausalLM) -> None:
-    import torch
-
     batch_size = 1
     seq_len = 6
 
-    self_attn_torch = model.model.layers[0].self_attn
-    seq_torch = torch.rand(batch_size, seq_len, d_model, device=model.device)
-    attention_mask_torch = torch.tril(torch.ones(batch_size, 1, seq_len, seq_len, dtype=torch.bool, device=model.device))
-    attention_mask_torch_ = torch.where(attention_mask_torch, 0., -torch.inf)
+    self_attn_pt = model.model.layers[0].self_attn
+    seq_pt = torch.rand(batch_size, seq_len, d_model, device=model.device)
+    attention_mask_pt = torch.tril(torch.ones(batch_size, 1, seq_len, seq_len, dtype=torch.bool, device=model.device))
+    attention_mask_pt_ = torch.where(attention_mask_pt, 0., -torch.inf)
 
-    out_torch = self_attn_torch(seq_torch, attention_mask=attention_mask_torch_)[0]
+    out_pt = self_attn_pt(seq_pt, attention_mask=attention_mask_pt_)[0]
 
-    params = convert_attention_params(self_attn_torch)
+    params = convert_attention_params(self_attn_pt)
 
-    seq_jax = pt2jax(seq_torch)
-    attention_mask_jax = pt2jax(attention_mask_torch)
+    seq_jax = pt2jax(seq_pt)
+    attention_mask_jax = pt2jax(attention_mask_pt)
     out_jax = forward_attention(params, seq_jax, attention_mask_jax)
 
-    assert jnp.allclose(out_jax, pt2jax(out_torch), atol=1e-5)
+    assert jnp.allclose(out_jax, pt2jax(out_pt), atol=1e-5)

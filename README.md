@@ -3,7 +3,7 @@
 ## Roadmap
 
 - [x] Model architecture
-- [ ] Publish a Python library
+- [x] Publish a Python library
 - [ ] Model parallelism
 - [ ] Generation
     - [ ] KV cache

@@ -4,10 +4,10 @@ import jax; jax.config.update('jax_default_matmul_precision', jax.lax.Precision.
 import torch
 from transformers import MistralForCausalLM
 
-from lib.attention import test_forward_attention
-from lib.embedding import test_forward_embedding
-from lib.mistral_lm import test_forward_mistral_lm
-from lib.rms_norm import test_forward_rms_norm
+from mistral.attention import test_forward_attention
+from mistral.embedding import test_forward_embedding
+from mistral.mistral_lm import test_forward_mistral_lm
+from mistral.rms_norm import test_forward_rms_norm
 
 def main():
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')

@@ -4,7 +4,7 @@ import pickle
 
 from transformers import MistralForCausalLM
 
-from lib.mistral_lm import convert_mistral_lm_params
+from mistral.mistral_lm import convert_mistral_lm_params
 
 model = MistralForCausalLM.from_pretrained('mistralai/Mistral-7B-v0.1')
 params = convert_mistral_lm_params(model)

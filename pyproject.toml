@@ -20,7 +20,7 @@ classifiers = [
 ]
 
 [tools.setuptools]
-packages = ["lib"]
+packages = ["mistral"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}

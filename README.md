@@ -1,5 +1,19 @@
 # Mistral JAX
 
+## Usage
+
+Simple installation from PyPI.
+
+```sh
+pip install mistral-jax
+```
+
+Import MistralLMParams and MistralModelParams.
+
+```python
+from mistral import MistralLMParams, MistralModelParams
+```
+
 ## Roadmap
 
 - [x] Model architecture

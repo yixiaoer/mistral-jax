@@ -6,6 +6,7 @@ from transformers import MistralForCausalLM
 from transformers.models.mistral.modeling_mistral import MistralRMSNorm
 
 from .array_conversion import jax2pt, pt2jax
+from .einshard import einshard
 
 # TODO: eliminate this
 d_model = 4096
@@ -20,6 +21,9 @@ def convert_back_rms_norm_params(rms_norm: RMSNormParams) -> MistralRMSNorm:
     rms_norm_pt = MistralRMSNorm(rms_norm.shape[0], rms_norm_eps)
     rms_norm_pt.weight = torch.nn.Parameter(jax2pt(rms_norm))
     return rms_norm_pt
+
+def shard_rms_norm_params(params: RMSNormParams) -> RMSNormParams:
+    return einshard(params, '... -> 1 ...')
 
 # Taken from https://github.com/ayaka14732/llama-2-jax/blob/main/lib/llama/rms_norm.py
 def forward_rms_norm(params: RMSNormParams, x: Array) -> Array:

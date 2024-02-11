@@ -1,9 +1,11 @@
+import jax
 from jax import Array
 import jax.numpy as jnp
 from transformers import MistralForCausalLM
 
 from .array_conversion import pt2jax
-from .mistral_model import MistralModelParams, convert_mistral_model_params, forward_mistral_model
+from .einshard import einshard
+from .mistral_model import MistralModelParams, convert_mistral_model_params, forward_mistral_model, shard_mistral_model_params
 
 MistralLMParams = tuple[MistralModelParams, Array]
 
@@ -12,12 +14,17 @@ def convert_mistral_lm_params(model: MistralForCausalLM) -> MistralLMParams:
     lm_head = pt2jax(model.lm_head.weight.T)
     return model_params, lm_head
 
-def convert_back_mistral_lm_params():
+def convert_back_mistral_lm_params(params: MistralLMParams) -> MistralForCausalLM:
     pass
+
+def shard_mistral_lm_params(params: MistralLMParams) -> MistralLMParams:
+    model_params, lm_head = params
+    model_params = shard_mistral_model_params(model_params)
+    lm_head = einshard(lm_head, '... -> 1 ...')
+    return model_params, lm_head
 
 def forward_mistral_lm(params: MistralLMParams, input_ids: Array, qk_mask: Array) -> Array:
     model_params, lm_head = params
-
     outputs = forward_mistral_model(model_params, input_ids, qk_mask)
     logits = outputs @ lm_head
     return logits
@@ -35,7 +42,12 @@ def test_forward_mistral_lm(model: MistralForCausalLM) -> None:
     outputs_pt = model(input_ids, attn_mask)[0]
     outputs_pt_to_jax = pt2jax(outputs_pt)
 
-    params = convert_mistral_lm_params(model)
+    # load on CPU first to avoid OOM
+    cpu_device = jax.devices('cpu')[0]
+    with jax.default_device(cpu_device):
+        params = convert_mistral_lm_params(model)
+    params = shard_mistral_lm_params(params)
+
     input_ids_jax = pt2jax(input_ids)
     attn_mask_jax = pt2jax(attn_mask).astype(jnp.bool_)
     qk_mask = jnp.tril(jnp.einsum('bi,bj->bij', attn_mask_jax, attn_mask_jax))[:, None, None]

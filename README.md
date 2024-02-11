@@ -1,6 +1,6 @@
 # Mistral JAX
 
-## Usage
+## Installation
 
 Simple installation from PyPI.
 
@@ -8,17 +8,39 @@ Simple installation from PyPI.
 pip install mistral-jax
 ```
 
-Import MistralLMParams and MistralModelParams.
+## Usage
 
 ```python
-from mistral import MistralLMParams, MistralModelParams
+import jax
+import jax.numpy as jnp
+from mistral import convert_mistral_lm_params, forward_mistral_lm, shard_mistral_lm_params
+from transformers import AutoTokenizer, MistralForCausalLM
+
+model = MistralForCausalLM.from_pretrained('mistralai/Mistral-7B-v0.1')
+tokenizer = AutoTokenizer.from_pretrained('mistralai/Mistral-7B-v0.1')
+tokenizer.pad_token = tokenizer.eos_token
+
+sentences = ['I have a cat.', 'There is a cat in my home.']
+inputs = tokenizer(sentences, padding=True, return_tensors='jax')
+input_ids = inputs.input_ids
+attn_mask = inputs.attention_mask.astype(jnp.bool_)
+qk_mask = jnp.tril(jnp.einsum('bi,bj->bij', attn_mask, attn_mask))[:, None, None]
+
+# load on CPU first to avoid OOM
+cpu_device = jax.devices('cpu')[0]
+with jax.default_device(cpu_device):
+    params = convert_mistral_lm_params(model)
+params = shard_mistral_lm_params(params)
+
+outputs = forward_mistral_lm(params, input_ids, qk_mask)
+print(outputs)
 ```
 
 ## Roadmap
 
 - [x] Model architecture
 - [x] Publish a Python library
-- [ ] Model parallelism
+- [x] 1D Model parallelism
 - [ ] Generation
     - [ ] KV cache
     - [ ] Sampling

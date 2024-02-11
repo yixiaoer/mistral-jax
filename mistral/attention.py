@@ -9,6 +9,7 @@ from transformers import MistralForCausalLM
 from transformers.models.mistral.modeling_mistral import MistralAttention
 
 from .array_conversion import pt2jax
+from .einshard import einshard
 from .rotary_embedding import make_rotary_values, forward_rotary_embedding
 
 # TODO: eliminate this
@@ -28,15 +29,23 @@ def convert_attention_params(self_attn: MistralAttention) -> AttentionParams:
     q_proj_jax = pt2jax(q_proj.T).reshape(d_model, n_heads_kv, n_rep_kv, d_k).transpose(0, 2, 1, 3)
     k_proj_jax = pt2jax(k_proj.T).reshape(d_model, n_heads_kv, d_k)
     v_proj_jax = pt2jax(v_proj.T).reshape(d_model, n_heads_kv, d_v)
-    out_proj_jax = pt2jax(o_proj.T).reshape(n_heads_kv, n_rep_kv, d_v, d_model).transpose(1, 0, 2, 3)
+    o_proj_jax = pt2jax(o_proj.T).reshape(n_heads_kv, n_rep_kv, d_v, d_model).transpose(1, 0, 2, 3)
 
-    return q_proj_jax, k_proj_jax, v_proj_jax, out_proj_jax
+    return q_proj_jax, k_proj_jax, v_proj_jax, o_proj_jax
 
 def convert_back_attention_params():
     pass
 
+def shard_attention_params(params: AttentionParams) -> AttentionParams:
+    q_proj, k_proj, v_proj, o_proj = params
+    q_proj = einshard(q_proj, 'm r h k -> m r h1 k')
+    k_proj = einshard(k_proj, 'm h k -> m h1 k')
+    v_proj = einshard(v_proj, 'm h v -> m h1 v')
+    o_proj = einshard(o_proj, 'r h v m -> r h1 v m')
+    return q_proj, k_proj, v_proj, o_proj
+
 def forward_attention(params: AttentionParams, seq: Array, qk_mask: Array) -> Array:
-    q_proj_jax, k_proj_jax, v_proj_jax, out_proj_jax = params
+    q_proj_jax, k_proj_jax, v_proj_jax, o_proj_jax = params
 
     # for q, the seq is src_seq, 
     # for k and v, the seq is des_seq,
@@ -66,8 +75,8 @@ def forward_attention(params: AttentionParams, seq: Array, qk_mask: Array) -> Ar
 
     qkv = jnp.einsum('brhsd,bhdv->brhsv', qk, v)
     # (1, 4, 8, 6, 128)
-    out = jnp.einsum('brhsv,rhvm->bsm', qkv, out_proj_jax)
-    # out.shape: (1, 6, 4096); qkv (1, 4, 8, 6, 128); out_proj_jax.shape (4, 8, 128, 4096)
+    out = jnp.einsum('brhsv,rhvm->bsm', qkv, o_proj_jax)
+    # out.shape: (1, 6, 4096); qkv (1, 4, 8, 6, 128); o_proj_jax.shape (4, 8, 128, 4096)
     return out
 
 def test_forward_attention(model: MistralForCausalLM) -> None:

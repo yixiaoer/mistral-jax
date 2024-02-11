@@ -5,6 +5,7 @@ from torch.nn import Embedding as TorchEmbedding
 from transformers import MistralForCausalLM
 
 from .array_conversion import pt2jax
+from .einshard import einshard
 
 EmbeddingParams = Array
 
@@ -13,6 +14,9 @@ def convert_embedding_params(embedding: TorchEmbedding) -> EmbeddingParams:
 
 def convert_back_embedding_params():
     pass
+
+def shard_embedding_params(params: EmbeddingParams) -> EmbeddingParams:
+    return einshard(params, '... -> 1 ...')
 
 def forward_embedding(params: EmbeddingParams, input_ids: Array) -> Array:
     return params[input_ids]

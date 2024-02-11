@@ -3,9 +3,10 @@ import jax.numpy as jnp
 from transformers import MistralForCausalLM
 from transformers.models.mistral.modeling_mistral import MistralDecoderLayer
 
-from .attention import AttentionParams, convert_attention_params, forward_attention
-from .rms_norm import RMSNormParams, convert_rms_norm_params, forward_rms_norm
-from .mlp_layer import MLPLayerParams, convert_mlp_layer_params, forward_mlp_layer
+from .attention import AttentionParams, convert_attention_params, forward_attention, shard_attention_params
+from .einshard import einshard
+from .rms_norm import RMSNormParams, convert_rms_norm_params, forward_rms_norm, shard_rms_norm_params
+from .mlp_layer import MLPLayerParams, convert_mlp_layer_params, forward_mlp_layer, shard_mlp_layer_params
 
 DecoderBlockParams = tuple[RMSNormParams, AttentionParams, MLPLayerParams, RMSNormParams]
 
@@ -18,6 +19,14 @@ def convert_decoder_block_params(decoder_block: MistralDecoderLayer) -> DecoderB
 
 def convert_back_decoder_block_params():
     pass
+
+def shard_decoder_block_params(params: DecoderBlockParams) -> DecoderBlockParams:
+    input_layernorm, self_attn, mlp, post_attention_layernorm = params
+    input_layernorm = shard_rms_norm_params(input_layernorm)
+    self_attn = shard_attention_params(self_attn)
+    mlp = shard_mlp_layer_params(mlp)
+    post_attention_layernorm = shard_rms_norm_params(post_attention_layernorm)
+    return input_layernorm, self_attn, mlp, post_attention_layernorm
 
 def forward_decoder_block(params: DecoderBlockParams, seq: Array, qk_mask: Array) -> Array:
     input_layernorm, self_attn, mlp, post_attention_layernorm = params

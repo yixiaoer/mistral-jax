@@ -5,6 +5,7 @@ from transformers import MistralForCausalLM
 from transformers.models.mistral.modeling_mistral import MistralMLP
 
 from .array_conversion import pt2jax
+from .einshard import einshard
 
 MLPLayerParams = tuple[Array, Array, Array]
 
@@ -17,6 +18,13 @@ def convert_mlp_layer_params(mlp_layer: MistralMLP) -> MLPLayerParams:
 def convert_back_mlp_layer_params(mlp_layer: MLPLayerParams) -> MistralMLP:
     # mlp_layer_pt = MistralMLP(config_pt)  # TODO: handle config
     pass
+
+def shard_mlp_layer_params(params: MLPLayerParams) -> MLPLayerParams:
+    gate_proj, up_proj, down_proj = params
+    gate_proj = einshard(gate_proj, 'm f -> m f1')
+    up_proj = einshard(up_proj, 'm f -> m f1')
+    down_proj = einshard(down_proj, 'f m -> f1 m')
+    return gate_proj, up_proj, down_proj
 
 def forward_mlp_layer(params: MLPLayerParams, seq: Array) -> Array:
     gate_proj, up_proj, down_proj = params

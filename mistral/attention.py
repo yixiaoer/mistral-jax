@@ -10,7 +10,8 @@ from transformers.models.mistral.modeling_mistral import MistralAttention
 
 from .array_conversion import pt2jax
 from .einshard import einshard
-from .rotary_embedding import make_rotary_values, forward_rotary_embedding
+from .kvcache import KVCache
+from .rotary_embedding import RotaryValues, make_rotary_values, forward_rotary_embedding
 
 # TODO: eliminate this
 d_model = 4096
@@ -44,14 +45,15 @@ def shard_attention_params(params: AttentionParams) -> AttentionParams:
     o_proj = einshard(o_proj, 'r h v m -> r h1 v m')
     return q_proj, k_proj, v_proj, o_proj
 
-def forward_attention(params: AttentionParams, seq: Array, qk_mask: Array) -> Array:
+def forward_attention(params: AttentionParams, seq: Array, qk_mask: Array, rotary_values: RotaryValues, kv_cache_cur: KVCache, kv_cache_pre: KVCache) -> tuple[Array, KVCache, KVCache]:
     q_proj_jax, k_proj_jax, v_proj_jax, o_proj_jax = params
 
     # for q, the seq is src_seq, 
     # for k and v, the seq is des_seq,
     # in self_atten the src_ and des_seq are the same
-    batch_size, seq_len, _ = seq.shape
-    rotary_values = make_rotary_values(batch_size, seq_len)
+    # rotary_values as the input
+    # batch_size, seq_len, _ = src_seq.shape
+    # rotary_values = make_rotary_values(batch_size, seq_len)
     # q.shape: (1 batch_size, 4 n_rep_kv, 8 n_head, 6 seq_len ?, 128 k_dimension)
     # k.shape: (1 batch_size, 8 n_head, 6 seq_len, 128 k_dimension)
     # v.shape: (1 batch_size, 8 n_head, 6 seq_len, 128 v_dimension)
@@ -66,6 +68,23 @@ def forward_attention(params: AttentionParams, seq: Array, qk_mask: Array) -> Ar
     q = forward_rotary_embedding(q, rotary_values=rotary_values)
     k = forward_rotary_embedding(k, rotary_values=rotary_values)
 
+    # print(k.shape)
+    # print(v.shape)
+    # KVCache to optimize generation
+    if kv_cache_cur is None:
+        kv_cache_cur = [], []
+    if kv_cache_pre is not None:
+        # one new token as input, kv_cache_pre comes from previous output
+        k = jnp.concatenate((kv_cache_pre[0].pop(0), k), axis=2)
+        v = jnp.concatenate((kv_cache_pre[1].pop(0), v), axis=2)
+        # print('One new token, blocks')
+        # print(len(k_cache_pre))
+    # print(k.shape)
+    kv_cache_cur[0].append(k)
+    kv_cache_cur[1].append(v)
+    # print(k.shape)
+    # print(v.shape)
+
     # self-attention
     # (1 batch_size, 4 repetition, 8 head number, 6 seq_len, 6 seq_len)
     # Scaled Dot-Product Attention as 3.2.1 equation(1) in orginal Transformer paper
@@ -77,7 +96,9 @@ def forward_attention(params: AttentionParams, seq: Array, qk_mask: Array) -> Ar
     # (1, 4, 8, 6, 128)
     out = jnp.einsum('brhsv,rhvm->bsm', qkv, o_proj_jax)
     # out.shape: (1, 6, 4096); qkv (1, 4, 8, 6, 128); o_proj_jax.shape (4, 8, 128, 4096)
-    return out
+    # print('======')
+    # print(out.shape)
+    return out, kv_cache_cur, kv_cache_pre
 
 def test_forward_attention(model: MistralForCausalLM) -> None:
     batch_size = 1
@@ -94,6 +115,8 @@ def test_forward_attention(model: MistralForCausalLM) -> None:
 
     seq_jax = pt2jax(seq_pt)
     attention_mask_jax = pt2jax(attention_mask_pt)
-    out_jax = forward_attention(params, seq_jax, attention_mask_jax)
+    batch_size, seq_len, _ = seq_jax.shape
+    rotary_values = make_rotary_values(batch_size, seq_len)
+    out_jax, _, _ = forward_attention(params, seq_jax, attention_mask_jax, rotary_values, None, None)
 
     assert jnp.allclose(out_jax, pt2jax(out_pt), atol=1e-5)

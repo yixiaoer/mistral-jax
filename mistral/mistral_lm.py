@@ -5,7 +5,9 @@ from transformers import MistralForCausalLM
 
 from .array_conversion import pt2jax
 from .einshard import einshard
+from .kvcache import KVCache
 from .mistral_model import MistralModelParams, convert_mistral_model_params, forward_mistral_model, shard_mistral_model_params
+from .rotary_embedding import RotaryValues, make_rotary_values
 
 MistralLMParams = tuple[MistralModelParams, Array]
 
@@ -23,18 +25,19 @@ def shard_mistral_lm_params(params: MistralLMParams) -> MistralLMParams:
     lm_head = einshard(lm_head, '... -> 1 ...')
     return model_params, lm_head
 
-def forward_mistral_lm(params: MistralLMParams, input_ids: Array, qk_mask: Array) -> Array:
+def forward_mistral_lm(params: MistralLMParams, input_ids: Array, qk_mask: Array, rotary_values: RotaryValues, kv_cache_cur: KVCache, kv_cache_pre: KVCache) -> tuple[Array, KVCache, KVCache]:
     model_params, lm_head = params
-    outputs = forward_mistral_model(model_params, input_ids, qk_mask)
+    outputs, kv_cache_cur, kv_cache_pre = forward_mistral_model(model_params, input_ids, qk_mask, rotary_values, kv_cache_cur, kv_cache_pre)
     logits = outputs @ lm_head
-    return logits
+    return logits, kv_cache_cur, kv_cache_pre
 
 def test_forward_mistral_lm(model: MistralForCausalLM) -> None:
     from transformers import AutoTokenizer
 
     tokenizer = AutoTokenizer.from_pretrained('mistralai/Mistral-7B-v0.1')
     tokenizer.pad_token = tokenizer.eos_token
-    sentences = ['I have a cat.', 'There is a cat in my home.']
+    sentences = ['I have a cat.']
+    # sentences = ['I have a cat.', 'There is a cat in my home.']
     inputs = tokenizer(sentences, padding=True, return_tensors='pt')
     input_ids = inputs.input_ids
     attn_mask = inputs.attention_mask
@@ -51,7 +54,11 @@ def test_forward_mistral_lm(model: MistralForCausalLM) -> None:
     input_ids_jax = pt2jax(input_ids)
     attn_mask_jax = pt2jax(attn_mask).astype(jnp.bool_)
     qk_mask = jnp.tril(jnp.einsum('bi,bj->bij', attn_mask_jax, attn_mask_jax))[:, None, None]
-    outputs_jax = forward_mistral_lm(params, input_ids_jax, qk_mask)
+
+    batch_size, seq_len = input_ids_jax.shape
+    rotary_values = make_rotary_values(batch_size, seq_len)
+
+    outputs_jax, _, _ = forward_mistral_lm(params, input_ids_jax, qk_mask, rotary_values, None, None)
 
     outputs_pt_to_jax = jnp.where(attn_mask_jax[:, :, None], outputs_pt_to_jax, 0.)
     outputs_jax = jnp.where(attn_mask_jax[:, :, None], outputs_jax, 0.)

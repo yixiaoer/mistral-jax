@@ -1,9 +1,10 @@
-
 from jax import Array
 from torch.nn import ModuleList as TorchModuleList
 
 from .decoder_block import DecoderBlockParams, convert_decoder_block_params, forward_decoder_block, shard_decoder_block_params
 from .einshard import einshard
+from .kvcache import KVCache
+from .rotary_embedding import RotaryValues
 
 DecoderParams = list[DecoderBlockParams]
 
@@ -16,11 +17,12 @@ def convert_back_decoder_params():
 def shard_decoder_params(layers: DecoderParams) -> DecoderParams:
     return [shard_decoder_block_params(layer) for layer in layers]
 
-def forward_decoder(params: DecoderParams, seq: Array, qk_mask: Array) -> Array:
+def forward_decoder(params: DecoderParams, seq: Array, qk_mask: Array, rotary_values: RotaryValues, kv_cache_cur: KVCache, kv_cache_pre: KVCache) -> tuple[Array, KVCache, KVCache]:
     # TODO: jax.lax.scan
     for param in params:
-        seq = forward_decoder_block(param, seq, qk_mask)
-    return seq
+        seq, kv_cache_cur, kv_cache_pre = forward_decoder_block(param, seq, qk_mask, rotary_values, kv_cache_cur, kv_cache_pre)
+    kv_cache_pre = kv_cache_cur
+    return seq, None, kv_cache_pre
 
 def test_forward_decoder():
     pass

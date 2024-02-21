@@ -51,9 +51,7 @@ def forward_attention(params: AttentionParams, seq: Array, qk_mask: Array, rotar
     # for q, the seq is src_seq, 
     # for k and v, the seq is des_seq,
     # in self_atten the src_ and des_seq are the same
-    # rotary_values as the input
-    # batch_size, seq_len, _ = src_seq.shape
-    # rotary_values = make_rotary_values(batch_size, seq_len)
+
     # q.shape: (1 batch_size, 4 n_rep_kv, 8 n_head, 6 seq_len ?, 128 k_dimension)
     # k.shape: (1 batch_size, 8 n_head, 6 seq_len, 128 k_dimension)
     # v.shape: (1 batch_size, 8 n_head, 6 seq_len, 128 v_dimension)
@@ -68,22 +66,14 @@ def forward_attention(params: AttentionParams, seq: Array, qk_mask: Array, rotar
     q = forward_rotary_embedding(q, rotary_values=rotary_values)
     k = forward_rotary_embedding(k, rotary_values=rotary_values)
 
-    # print(k.shape)
-    # print(v.shape)
     # KVCache to optimize generation
     if kv_cache_cur is None:
         kv_cache_cur = [], []
     if kv_cache_pre is not None:
-        # one new token as input, kv_cache_pre comes from previous output
         k = jnp.concatenate((kv_cache_pre[0].pop(0), k), axis=2)
         v = jnp.concatenate((kv_cache_pre[1].pop(0), v), axis=2)
-        # print('One new token, blocks')
-        # print(len(k_cache_pre))
-    # print(k.shape)
     kv_cache_cur[0].append(k)
     kv_cache_cur[1].append(v)
-    # print(k.shape)
-    # print(v.shape)
 
     # self-attention
     # (1 batch_size, 4 repetition, 8 head number, 6 seq_len, 6 seq_len)
@@ -91,13 +81,8 @@ def forward_attention(params: AttentionParams, seq: Array, qk_mask: Array, rotar
     qk = jnp.einsum('brhsk,bhdk->brhsd', q, k) / math.sqrt(d_k)
 
     qk = jax.nn.softmax(qk, where=qk_mask, initial=0.)
-
     qkv = jnp.einsum('brhsd,bhdv->brhsv', qk, v)
-    # (1, 4, 8, 6, 128)
     out = jnp.einsum('brhsv,rhvm->bsm', qkv, o_proj_jax)
-    # out.shape: (1, 6, 4096); qkv (1, 4, 8, 6, 128); o_proj_jax.shape (4, 8, 128, 4096)
-    # print('======')
-    # print(out.shape)
     return out, kv_cache_cur, kv_cache_pre
 
 def test_forward_attention(model: MistralForCausalLM) -> None:

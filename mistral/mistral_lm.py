@@ -37,7 +37,6 @@ def test_forward_mistral_lm(model: MistralForCausalLM) -> None:
     tokenizer = AutoTokenizer.from_pretrained('mistralai/Mistral-7B-v0.1')
     tokenizer.pad_token = tokenizer.eos_token
     sentences = ['I have a cat.']
-    # sentences = ['I have a cat.', 'There is a cat in my home.']
     inputs = tokenizer(sentences, padding=True, return_tensors='pt')
     input_ids = inputs.input_ids
     attn_mask = inputs.attention_mask

@@ -20,7 +20,6 @@ def generate(params: MistralLMParams, sentences: list[str], tokenizer: AutoToken
     qk_mask = jnp.tril(jnp.einsum('bi,bj->bij', attn_mask, attn_mask))[:, None, None]
     kv_cache_cur, kv_cache_pre = None, None
 
-    # generate one token with inital input sentence
     rotary_values_cur = make_rotary_values(batch_size, input_len)
     rotary_values = make_rotary_values(batch_size, input_len + max_new_tokens)
 
@@ -33,13 +32,10 @@ def generate(params: MistralLMParams, sentences: list[str], tokenizer: AutoToken
         logits = logits[0]
         next_prob = softmax(logits[-1])
         next_token = sample_fn(next_prob)
-        # generated one new token as the following input to generate token one by one
+
         input_ids = next_token.reshape(1,-1)
         output_ids = jnp.concatenate((output_ids, input_ids), axis=1)
-        # only one token for following generation
         qk_mask = None
-        # print(input_ids)
-        # print(output_ids)
     return output_ids
 
 def greedy_search(probs: Array) -> Array:

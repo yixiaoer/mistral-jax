@@ -43,7 +43,6 @@ def forward_decoder_block(params: DecoderBlockParams, seq: Array, qk_mask: Array
     seq = forward_rms_norm(post_attention_layernorm, seq)
     seq = forward_mlp_layer(mlp, seq)
     seq += seq_
-
     return seq, kv_cache_cur, kv_cache_pre
 
 def test_forward_decoder_block(model: MistralForCausalLM) -> None:

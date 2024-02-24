@@ -70,8 +70,13 @@ def forward_attention(params: AttentionParams, seq: Array, qk_mask: Array, rotar
     if kv_cache_cur is None:
         kv_cache_cur = [], []
     if kv_cache_pre is not None:
-        k = jnp.concatenate((kv_cache_pre[0].pop(0), k), axis=2)
-        v = jnp.concatenate((kv_cache_pre[1].pop(0), v), axis=2)
+        # since left padding with max_length, the total len is fixed
+        # so every step the remove one first padding token
+        k = jnp.concatenate((kv_cache_pre[0].pop(0)[:,:,:-1,:], k), axis=2)
+        v = jnp.concatenate((kv_cache_pre[1].pop(0)[:,:,:-1,:], v), axis=2)
+        # previous implement without left padding
+        # k = jnp.concatenate((kv_cache_pre[0].pop(0), k), axis=2)
+        # v = jnp.concatenate((kv_cache_pre[1].pop(0), v), axis=2)
     kv_cache_cur[0].append(k)
     kv_cache_cur[1].append(v)
 
@@ -101,7 +106,7 @@ def test_forward_attention(model: MistralForCausalLM) -> None:
     seq_jax = pt2jax(seq_pt)
     attention_mask_jax = pt2jax(attention_mask_pt)
     batch_size, seq_len, _ = seq_jax.shape
-    rotary_values = make_rotary_values(batch_size, seq_len)
+    rotary_values = make_rotary_values(None, batch_size, seq_len)
     out_jax, _, _ = forward_attention(params, seq_jax, attention_mask_jax, rotary_values, None, None)
 
     assert jnp.allclose(out_jax, pt2jax(out_pt), atol=1e-5)

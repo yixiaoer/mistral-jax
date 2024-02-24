@@ -1,5 +1,9 @@
 # Mistral JAX
 
+This project is the JAX implementation of [Mistral 7B](https://arxiv.org/pdf/2310.06825.pdf).
+
+It is supported by Cloud TPUs from Google's [TPU Research Cloud (TRC)](https://sites.research.google/trc/about/).
+
 ## Installation
 
 Simple installation from PyPI.
@@ -43,7 +47,7 @@ print(outputs)
 - [x] 1D Model parallelism
 - [ ] Generation
     - [x] KV cache(batch_size = 1)
-    - [ ] Left padding
+    - [x] Left padding
     - [ ] Sampling
 - [ ] Training
 

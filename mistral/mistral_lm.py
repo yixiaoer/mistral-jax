@@ -25,11 +25,11 @@ def shard_mistral_lm_params(params: MistralLMParams) -> MistralLMParams:
     lm_head = einshard(lm_head, '... -> 1 ...')
     return model_params, lm_head
 
-def forward_mistral_lm(params: MistralLMParams, input_ids: Array, qk_mask: Array, rotary_values: RotaryValues, kv_cache_cur: KVCache, kv_cache_pre: KVCache) -> tuple[Array, KVCache, KVCache]:
+def forward_mistral_lm(params: MistralLMParams, input_ids: Array, qk_mask: Array, rotary_values: RotaryValues, kv_cache_pre: KVCache) -> tuple[Array, KVCache]:
     model_params, lm_head = params
-    outputs, kv_cache_cur, kv_cache_pre = forward_mistral_model(model_params, input_ids, qk_mask, rotary_values, kv_cache_cur, kv_cache_pre)
+    outputs, kv_cache_pre = forward_mistral_model(model_params, input_ids, qk_mask, rotary_values, kv_cache_pre)
     logits = outputs @ lm_head
-    return logits, kv_cache_cur, kv_cache_pre
+    return logits, kv_cache_pre
 
 def test_forward_mistral_lm(model: MistralForCausalLM) -> None:
     from transformers import AutoTokenizer
@@ -57,7 +57,7 @@ def test_forward_mistral_lm(model: MistralForCausalLM) -> None:
     batch_size, seq_len = input_ids_jax.shape
     rotary_values = make_rotary_values(None, batch_size, seq_len)
 
-    outputs_jax, _, _ = forward_mistral_lm(params, input_ids_jax, qk_mask, rotary_values, None, None)
+    outputs_jax, _ = forward_mistral_lm(params, input_ids_jax, qk_mask, rotary_values, None)
 
     outputs_pt_to_jax = jnp.where(attn_mask_jax[:, :, None], outputs_pt_to_jax, 0.)
     outputs_jax = jnp.where(attn_mask_jax[:, :, None], outputs_jax, 0.)

@@ -70,13 +70,9 @@ def forward_attention(params: AttentionParams, seq: Array, qk_mask: Array, rotar
     if kv_cache_cur is None:
         kv_cache_cur = [], []
     if kv_cache_pre is not None:
-        # since left padding with max_length, the total len is fixed
-        # so every step the remove one first padding token
         k = jnp.concatenate((kv_cache_pre[0].pop(0)[:,:,:-1,:], k), axis=2)
         v = jnp.concatenate((kv_cache_pre[1].pop(0)[:,:,:-1,:], v), axis=2)
-        # previous implement without left padding
-        # k = jnp.concatenate((kv_cache_pre[0].pop(0), k), axis=2)
-        # v = jnp.concatenate((kv_cache_pre[1].pop(0), v), axis=2)
+
     kv_cache_cur[0].append(k)
     kv_cache_cur[1].append(v)
 

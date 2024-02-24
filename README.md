@@ -46,7 +46,7 @@ print(outputs)
 - [x] Publish a Python library
 - [x] 1D Model parallelism
 - [ ] Generation
-    - [x] KV cache(batch_size = 1)
+    - [x] KV cache
     - [x] Left padding
     - [ ] Sampling
 - [ ] Training

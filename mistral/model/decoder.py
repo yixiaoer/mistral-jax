@@ -20,10 +20,7 @@ def shard_decoder_params(layers: DecoderParams) -> DecoderParams:
 def forward_decoder(params: DecoderParams, seq: Array, qk_mask: Array, rotary_values: RotaryValues, kv_cache_pre: KVCache) -> tuple[Array, KVCache]:
     # TODO: jax.lax.scan
     kv_cache_cur = None
-    i=0
-    for param in params[:1]:
-        print(i)
-        i += 1
+    for param in params:
         seq, kv_cache_cur, kv_cache_pre = forward_decoder_block(param, seq, qk_mask, rotary_values, kv_cache_cur, kv_cache_pre)
     kv_cache_pre = kv_cache_cur
     return seq, kv_cache_pre

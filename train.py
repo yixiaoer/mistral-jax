@@ -1,6 +1,7 @@
+import jax; jax.config.update('jax_spmd_mode', 'allow_all')
+
 from functools import partial
 
-import jax
 from jax import Array, value_and_grad
 import jax.numpy as jnp
 import optax

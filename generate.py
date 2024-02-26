@@ -1,6 +1,7 @@
+import jax; jax.config.update('jax_spmd_mode', 'allow_all')
+
 from typing import Callable
 
-import jax
 import torch
 from transformers import AutoTokenizer, MistralForCausalLM
 

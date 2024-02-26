@@ -5,9 +5,9 @@ from jax.nn import softmax
 import jax.numpy as jnp
 from transformers import AutoTokenizer, MistralForCausalLM
 
-from .kvcache import KVCache, left_shift_kv_cache
-from .mistral_lm import MistralLMParams, forward_mistral_lm
-from .rotary_embedding import get_rotary_values_at_position, make_rotary_values
+from ..model.kvcache import KVCache, left_shift_kv_cache
+from ..model.mistral_lm import MistralLMParams, forward_mistral_lm
+from ..model.rotary_embedding import get_rotary_values_at_position, make_rotary_values
 
 def generate(params: MistralLMParams, sentences: list[str], tokenizer: AutoTokenizer, max_length: int, max_new_tokens: int, sample_fn: Callable) -> Array:
     inputs = tokenizer(sentences, padding='max_length', max_length=max_length, return_tensors='jax')

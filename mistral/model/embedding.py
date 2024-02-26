@@ -4,8 +4,8 @@ import torch
 from torch.nn import Embedding as TorchEmbedding
 from transformers import MistralForCausalLM
 
-from .array_conversion import pt2jax
-from .einshard import einshard
+from ..lib.array_conversion import pt2jax
+from ..lib.einshard import einshard
 
 EmbeddingParams = Array
 

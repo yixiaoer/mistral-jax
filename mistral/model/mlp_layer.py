@@ -4,8 +4,8 @@ import jax.numpy as jnp
 from transformers import MistralForCausalLM
 from transformers.models.mistral.modeling_mistral import MistralMLP
 
-from .array_conversion import pt2jax
-from .einshard import einshard
+from ..lib.array_conversion import pt2jax
+from ..lib.einshard import einshard
 
 MLPLayerParams = tuple[Array, Array, Array]
 

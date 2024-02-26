@@ -45,7 +45,7 @@ print(outputs)
 - [x] Model architecture
 - [x] Publish a Python library
 - [x] 1D Model parallelism
-- [ ] Generation
+- [x] Generation
     - [x] KV cache
     - [x] Left padding
     - [ ] Sampling

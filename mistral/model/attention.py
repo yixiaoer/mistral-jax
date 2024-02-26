@@ -8,10 +8,10 @@ import torch
 from transformers import MistralForCausalLM
 from transformers.models.mistral.modeling_mistral import MistralAttention
 
-from .array_conversion import pt2jax
-from .einshard import einshard
 from .kvcache import KVCache
 from .rotary_embedding import RotaryValues, make_rotary_values, forward_rotary_embedding
+from ..lib.array_conversion import pt2jax
+from ..lib.einshard import einshard
 
 # TODO: eliminate this
 d_model = 4096

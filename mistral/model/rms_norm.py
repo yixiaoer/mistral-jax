@@ -5,8 +5,8 @@ import torch
 from transformers import MistralForCausalLM
 from transformers.models.mistral.modeling_mistral import MistralRMSNorm
 
-from .array_conversion import jax2pt, pt2jax
-from .einshard import einshard
+from ..lib.array_conversion import jax2pt, pt2jax
+from ..lib.einshard import einshard
 
 # TODO: eliminate this
 d_model = 4096

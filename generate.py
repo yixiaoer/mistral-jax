@@ -4,10 +4,11 @@ import jax
 import torch
 from transformers import AutoTokenizer, MistralForCausalLM
 
-from mistral.mistral_lm import convert_mistral_lm_params, shard_mistral_lm_params
-from mistral.generate import generate, greedy_search
+from mistral.model.mistral_lm import convert_mistral_lm_params, shard_mistral_lm_params
+from mistral.lib.generate import generate, greedy_search
 
 def main():
+    jax.distributed.initialize()
     model = MistralForCausalLM.from_pretrained('mistralai/Mistral-7B-v0.1')
     tokenizer = AutoTokenizer.from_pretrained('mistralai/Mistral-7B-v0.1')
     tokenizer.pad_token = tokenizer.eos_token

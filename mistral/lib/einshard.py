@@ -205,18 +205,26 @@ def einshard(arr: Array, expression: str) -> Array:
     d = {identifier: i for i, (identifier, _) in enumerate(elements_right) if identifier is not None}
     partition_spec = tuple(f'a{d[element_left]}' for element_left in elements_left)
 
-    # print(mesh_shape)
-    # print(axis_names)
-    # print(partition_spec)
+    print('===========')
+    print(mesh_shape)
+    print(axis_names)
+    print(partition_spec)
+    print('----------')
 
     devices = mesh_utils.create_device_mesh(mesh_shape)
     mesh = Mesh(devices, axis_names=axis_names)
     arr = jax.device_put(arr, NamedSharding(mesh, P(*partition_spec)))
     return arr
 
-# print(jax.device_count())
-# a = jnp.arange(32).reshape(8, 4)
-# jax.debug.visualize_array_sharding(a)
-# a = einshard(a, '... -> 1 ...')
-# jax.debug.visualize_array_sharding(a)
-# a.device_buffers
+print(jax.device_count())
+a = jnp.arange(32*4).reshape(32, 4)
+jax.debug.visualize_array_sharding(a)
+a = einshard(a, '... -> 1 ...')
+jax.debug.visualize_array_sharding(a)
+a.device_buffers
+
+b = jnp.arange(32*4).reshape(32, 4)
+jax.debug.visualize_array_sharding(b)
+b = einshard(b, 'x y -> x1 y')
+jax.debug.visualize_array_sharding(b)
+b.device_buffers

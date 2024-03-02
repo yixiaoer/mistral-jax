@@ -14,14 +14,13 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained('mistralai/Mistral-7B-v0.1')
     tokenizer.pad_token = tokenizer.eos_token
 
-    # load on CPU first to avoid OOM
-    # cpu_device = jax.devices('cpu')[0]
-    # with jax.default_device(cpu_device):
-    #     params = convert_mistral_lm_params(model)
-    # params = shard_mistral_lm_params(params)
-    # cpu_device = jax.devices('cpu')[0]
-    # with jax.default_device(cpu_device):
-    params = convert_mistral_lm_params(model)
+    if jax.device_count() <= 8:
+        # load on CPU first to avoid OOM
+        cpu_device = jax.devices('cpu')[0]
+        with jax.default_device(cpu_device):
+            params = convert_mistral_lm_params(model)
+    else:
+        params = convert_mistral_lm_params(model)
     params = shard_mistral_lm_params(params)
 
     sentences = ['How have you been?', 'The Lord of the Rings is a']

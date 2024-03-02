@@ -23,13 +23,16 @@ def loss_and_grad(params: MistralLMParams, seq_ids: Array, qk_mask: Array, label
 
 def main():
     jax.distributed.initialize()
+    model = MistralForCausalLM.from_pretrained('mistralai/Mistral-7B-v0.1')
     tokenizer = AutoTokenizer.from_pretrained('mistralai/Mistral-7B-v0.1')
     tokenizer.pad_token = tokenizer.eos_token
 
-    # load on CPU first to avoid OOM
-    cpu_device = jax.devices('cpu')[0]
-    with jax.default_device(cpu_device):
-        model = MistralForCausalLM.from_pretrained('mistralai/Mistral-7B-v0.1')
+    if jax.device_count() <= 8:
+        # load on CPU first to avoid OOM
+        cpu_device = jax.devices('cpu')[0]
+        with jax.default_device(cpu_device):
+            params = convert_mistral_lm_params(model)
+    else:
         params = convert_mistral_lm_params(model)
     params = shard_mistral_lm_params(params)
 

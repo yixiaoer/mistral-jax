@@ -205,16 +205,16 @@ def einshard(arr: Array, expression: str) -> Array:
     d = {identifier: i for i, (identifier, _) in enumerate(elements_right) if identifier is not None}
     partition_spec = tuple(f'a{d[element_left]}' for element_left in elements_left)
 
-    print('===========')
-    print(mesh_shape)
-    print(axis_names)
-    print(partition_spec)
+    # print('===========')
+    # print(mesh_shape)
+    # print(axis_names)
+    # print(partition_spec)
 
-    print('----------')
+    # print('----------')
 
     devices = mesh_utils.create_device_mesh(mesh_shape)
     mesh = Mesh(devices, axis_names=axis_names)
-    print(mesh)
+    # print(mesh)
     # arr = jax.device_put(arr, NamedSharding(mesh, P(*partition_spec)))
     arr = jax.make_array_from_callback(arr.shape, NamedSharding(mesh, P(*partition_spec)), lambda idx: arr[idx])
     return arr

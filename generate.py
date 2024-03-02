@@ -14,12 +14,13 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained('mistralai/Mistral-7B-v0.1')
     tokenizer.pad_token = tokenizer.eos_token
 
-    if jax.device_count() <= 8:
-        # load on CPU first to avoid OOM
+    if jax.local_device_count() == 8:
+        # if it's V3-8, load on CPU first to avoid OOM
         cpu_device = jax.devices('cpu')[0]
         with jax.default_device(cpu_device):
             params = convert_mistral_lm_params(model)
-    else:
+    elif jax.local_device_count() == 4:
+        # if it's V4-32
         params = convert_mistral_lm_params(model)
     params = shard_mistral_lm_params(params)
 

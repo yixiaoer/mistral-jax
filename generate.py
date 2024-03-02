@@ -15,9 +15,13 @@ def main():
     tokenizer.pad_token = tokenizer.eos_token
 
     # load on CPU first to avoid OOM
-    cpu_device = jax.devices('cpu')[0]
-    with jax.default_device(cpu_device):
-        params = convert_mistral_lm_params(model)
+    # cpu_device = jax.devices('cpu')[0]
+    # with jax.default_device(cpu_device):
+    #     params = convert_mistral_lm_params(model)
+    # params = shard_mistral_lm_params(params)
+    # cpu_device = jax.devices('cpu')[0]
+    # with jax.default_device(cpu_device):
+    params = convert_mistral_lm_params(model)
     params = shard_mistral_lm_params(params)
 
     sentences = ['How have you been?', 'The Lord of the Rings is a']

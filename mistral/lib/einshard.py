@@ -215,30 +215,28 @@ def einshard(arr: Array, expression: str) -> Array:
     devices = mesh_utils.create_device_mesh(mesh_shape)
     mesh = Mesh(devices, axis_names=axis_names)
     print(mesh)
-    arr = jax.device_put(arr, NamedSharding(mesh, P(*partition_spec)))
+    # arr = jax.device_put(arr, NamedSharding(mesh, P(*partition_spec)))
+    arr = jax.make_array_from_callback(arr.shape, NamedSharding(mesh, P(*partition_spec)), lambda idx: arr[idx])
     return arr
 
-# print(jax.device_count())
-# a = jnp.arange(32*4).reshape(32, 4)
-# jax.debug.visualize_array_sharding(a)
-# a = einshard(a, '... -> 1 ...')
-# jax.debug.visualize_array_sharding(a)
-# a.device_buffers
+print(jax.device_count())
+a = jnp.arange(32*4).reshape(32, 4)
+jax.debug.visualize_array_sharding(a)
+a = einshard(a, '... -> 1 ...')
+jax.debug.visualize_array_sharding(a)
 
-# b = jnp.arange(32*4).reshape(32, 4)
-# jax.debug.visualize_array_sharding(b)
-# b = einshard(b, 'x y -> x1 y')
-# jax.debug.visualize_array_sharding(b)
-# b.device_buffers
+b = jnp.arange(32*4).reshape(32, 4)
+jax.debug.visualize_array_sharding(b)
+b = einshard(b, 'x y -> x1 y')
+jax.debug.visualize_array_sharding(b)
 
-
-arr = jnp.arange(32*4).reshape(32, 4)
-n_devices = jax.device_count() 
-mesh_shape = [n_devices, 1]
-axis_names = ('a1', 'a2')
-partition_spec = ('a1', 'a2')
-devices = mesh_utils.create_device_mesh(mesh_shape)
-mesh = Mesh(devices, axis_names=axis_names)
-arr = jax.make_array_from_callback(arr.shape, NamedSharding(mesh, P(*partition_spec)), lambda idx: arr[idx])
-jax.debug.visualize_array_sharding(arr)
-print(arr.addressable_data(0).shape)
+# arr = jnp.arange(32*4).reshape(32, 4)
+# n_devices = jax.device_count() 
+# mesh_shape = [n_devices, 1]
+# axis_names = ('a1', 'a2')
+# partition_spec = ('a1', 'a2')
+# devices = mesh_utils.create_device_mesh(mesh_shape)
+# mesh = Mesh(devices, axis_names=axis_names)
+# arr = jax.make_array_from_callback(arr.shape, NamedSharding(mesh, P(*partition_spec)), lambda idx: arr[idx])
+# jax.debug.visualize_array_sharding(arr)
+# print(arr.addressable_data(0).shape)

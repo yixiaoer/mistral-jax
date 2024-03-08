@@ -219,16 +219,16 @@ def einshard(arr: Array, expression: str) -> Array:
     arr = jax.make_array_from_callback(arr.shape, NamedSharding(mesh, P(*partition_spec)), lambda idx: arr[idx])
     return arr
 
-print(jax.device_count())
-a = jnp.arange(32*4).reshape(32, 4)
-jax.debug.visualize_array_sharding(a)
-a = einshard(a, '... -> 1 ...')
-jax.debug.visualize_array_sharding(a)
+# print(jax.device_count())
+# a = jnp.arange(32*4).reshape(32, 4)
+# jax.debug.visualize_array_sharding(a)
+# a = einshard(a, '... -> 1 ...')
+# jax.debug.visualize_array_sharding(a)
 
-b = jnp.arange(32*4).reshape(32, 4)
-jax.debug.visualize_array_sharding(b)
-b = einshard(b, 'x y -> x1 y')
-jax.debug.visualize_array_sharding(b)
+# b = jnp.arange(32*4).reshape(32, 4)
+# jax.debug.visualize_array_sharding(b)
+# b = einshard(b, 'x y -> x1 y')
+# jax.debug.visualize_array_sharding(b)
 
 # arr = jnp.arange(32*4).reshape(32, 4)
 # n_devices = jax.device_count() 

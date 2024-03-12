@@ -56,7 +56,7 @@ python generate.py
 - [x] Generation
     - [x] KV cache
     - [x] Left padding
-    - [ ] Sampling
+    - [x] Top-K sampling / Top-p / Temperature
 - [ ] Training
 
 ## Install

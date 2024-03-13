@@ -55,7 +55,7 @@ def test_forward_mistral_lm(model: MistralForCausalLM) -> None:
     qk_mask = jnp.tril(jnp.einsum('bi,bj->bij', attn_mask_jax, attn_mask_jax))[:, None, None]
 
     batch_size, seq_len = input_ids_jax.shape
-    rotary_values = make_rotary_values(None, batch_size, seq_len)
+    rotary_values = make_rotary_values(batch_size, seq_len)
 
     outputs_jax, _ = forward_mistral_lm(params, input_ids_jax, qk_mask, rotary_values, None)
 

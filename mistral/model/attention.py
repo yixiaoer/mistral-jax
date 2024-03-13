@@ -43,8 +43,8 @@ def shard_attention_params(params: AttentionParams) -> AttentionParams:
     # k_proj = einshard(k_proj, 'm h k -> m h1 k')
     # v_proj = einshard(v_proj, 'm h v -> m h1 v')
     # o_proj = einshard(o_proj, 'r h v m -> r h1 v m')
-    # q_proj = einshard(q_proj, 'm r h k -> m r h k1')
-    # k_proj = einshard(k_proj, 'm h k -> m h k1')
+    q_proj = einshard(q_proj, 'm r h k -> m r h k1')
+    k_proj = einshard(k_proj, 'm h k -> m h k1')
     v_proj = einshard(v_proj, 'm h v -> m h v1')
     o_proj = einshard(o_proj, 'r h v m -> r h v1 m')
     return q_proj, k_proj, v_proj, o_proj
@@ -74,8 +74,8 @@ def forward_attention(params: AttentionParams, seq: Array, qk_mask: Array, rotar
     if kv_cache_cur is None:
         kv_cache_cur = [], []
     if kv_cache_pre is not None:
-        k = jnp.concatenate((kv_cache_pre[0].pop(0)[:,:,:-1,:], k), axis=2)
-        v = jnp.concatenate((kv_cache_pre[1].pop(0)[:,:,:-1,:], v), axis=2)
+        k = jnp.concatenate((kv_cache_pre[0].pop(0), k), axis=2)
+        v = jnp.concatenate((kv_cache_pre[1].pop(0), v), axis=2)
 
     kv_cache_cur[0].append(k)
     kv_cache_cur[1].append(v)
@@ -106,7 +106,7 @@ def test_forward_attention(model: MistralForCausalLM) -> None:
     seq_jax = pt2jax(seq_pt)
     attention_mask_jax = pt2jax(attention_mask_pt)
     batch_size, seq_len, _ = seq_jax.shape
-    rotary_values = make_rotary_values(None, batch_size, seq_len)
+    rotary_values = make_rotary_values(batch_size, seq_len)
     out_jax, _, _ = forward_attention(params, seq_jax, attention_mask_jax, rotary_values, None, None)
 
     assert jnp.allclose(out_jax, pt2jax(out_pt), atol=1e-5)

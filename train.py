@@ -44,7 +44,7 @@ def main():
     learning_rate = 1e-5
     batch_size = 2
     max_length = 32
-    rotary_values = make_rotary_values(None, batch_size, max_length)
+    rotary_values = make_rotary_values(batch_size, max_length)
 
     train_data = ExampleDataset('train')
     # test_data = ExampleDataset('test')

@@ -5,6 +5,7 @@ import jax.random as jrand
 import torch
 from transformers import AutoTokenizer, MistralForCausalLM
 
+jax.config.update('jax_default_matmul_precision', jax.lax.Precision.HIGHEST)
 jax.config.update('jax_spmd_mode', 'allow_all')
 
 from mistral.model.mistral_lm import convert_mistral_lm_params, shard_mistral_lm_params
@@ -32,22 +33,22 @@ def main():
     key = jrand.key(42)
     key, subkey = jrand.split(key)
 
-    output_ids = generate(params, sentences, tokenizer, max_length, max_new_tokens)
+    output_ids = generate(params, tokenizer, sentences, max_length, max_new_tokens)
     output = tokenizer.batch_decode(output_ids, skip_special_tokens=True)
 
-    output_id_sampling = generate(params, sentences, tokenizer, max_length, max_new_tokens, key=subkey, top_k=5, top_p=0.8, temperature=0.9)
+    output_id_sampling = generate(params, tokenizer, sentences, max_length, max_new_tokens, key=subkey, top_k=5, top_p=0.8, temperature=0.9)
     output_sampling = tokenizer.batch_decode(output_id_sampling, skip_special_tokens=True)
 
     inputs_pt = tokenizer(sentences, padding='max_length', max_length=max_length, return_tensors='pt')
     with torch.no_grad():
-        generated_pt = model.generate(input_ids=inputs_pt.input_ids, attention_mask=inputs_pt.attention_mask, do_sample=False, max_new_tokens=max_new_tokens)
+        generated_pt = model.generate(input_ids=inputs_pt.input_ids, attention_mask=inputs_pt.attention_mask, do_sample=False, max_new_tokens=max_new_tokens, max_length=max_length)
     output_pt = tokenizer.batch_decode(generated_pt, skip_special_tokens=True)
 
     print(f'JAX(sampling) output: {output_sampling}')
     print(f'JAX output: {output}')
     print(f'PyTorch output: {output_pt}')
     print(f'JAX output == PyTorch output: {output == output_pt}')
-    # JAX(sampling) output: ["How have you been?\nWe're still working our dayj0bes, and I think it has taken me until today for it finally hit us: We don`T work", 'The Lord of the Rings is a trilogy of high fantasy novels written by English author J. R. R. Tolkien. The trilogy, set in the fictional world']
+    # JAX(sampling) output: ["How have you been?\nWe're still working our dayj0bes, and I think it has taken me until today for it finally feel that the year is starting to roll", 'The Lord of the Rings is a trilogy of high fantasy novels written by English author J. R. R. Tolkien. The trilogy, collectively titled The Lord of']
     # JAX output: ['How have you been? I’ve been busy with work and life, but I’m still here. I’m still here.\n\nI’ve been thinking about this', 'The Lord of the Rings is a series of three epic fantasy novels written by J. R. R. Tolkien. The books tell of the quest of a group of heroes to destroy a']
     # PyTorch output: ['How have you been? I’ve been busy with work and life, but I’m still here. I’m still here.\n\nI’ve been thinking about this', 'The Lord of the Rings is a series of three epic fantasy novels written by J. R. R. Tolkien. The books tell of the quest of a group of heroes to destroy a']
     # JAX output == PyTorch output: True

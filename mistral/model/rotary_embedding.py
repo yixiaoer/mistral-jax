@@ -39,23 +39,17 @@ def forward_rotary_embedding(m: Array, *, rotary_values: RotaryValues) -> Array:
     b = op.einsum(n, sin_val, 'B ... L K, B L K -> B ... L K').astype(m.dtype)
     return a + b
 
-def make_rotary_values(padding_len: Array | None, batch_size: int, seq_len: int) -> RotaryValues:
+def make_rotary_values(batch_size: int, seq_len: int) -> RotaryValues:
     sin_val, cos_val = _make_weights(seq_len, d_k)
 
     sin_val = jnp.repeat(sin_val[None], batch_size, axis=0)
     cos_val = jnp.repeat(cos_val[None], batch_size, axis=0)
-
-    if padding_len is not None:
-        roll_func = jax.vmap(lambda a, shift: jnp.roll(a, shift, axis=-2))  # -2: dimension L
-        sin_val = roll_func(sin_val, - padding_len)
-        cos_val = roll_func(cos_val, - padding_len)
-
     return RotaryValues(sin_val, cos_val)
 
 def get_rotary_values_at_position(rotary_values: RotaryValues, position: Array) -> RotaryValues:
     sin_val, cos_val = rotary_values
     sin_val = sin_val[:, position][:, None]
     cos_val = cos_val[:, position][:, None]
-    
+
     rotary_values = RotaryValues(sin_val, cos_val)
     return rotary_values

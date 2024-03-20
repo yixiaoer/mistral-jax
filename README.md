@@ -57,6 +57,7 @@ python generate.py
     - [x] KV cache
     - [x] Left padding
     - [x] Top-K sampling / Top-p / Temperature
+    - [x] Beam search (batch_size = 1)
 - [ ] Training
 
 ## Install
@@ -214,3 +215,13 @@ To meet the higher memory demands for training, the model needed to be loaded on
 First, it was the previously mentioned issue related to Tensor Parallelism on TPU v4-32: its configuration across 4 hosts necessitated cross-host partitioning, replacing `jax.device_put()` with `jax.make_array_from_callback()`. Scripts should run on the whole 4 hosts.
 
 Besides, the attention layer was initially partitioned based on `n_heads_kv` with a value 8 for `q_proj`, `k_proj`, `v_proj`, and `o_proj`, a strategy that worked well with TPU v3-8, which consisted of 8 devices. However, TPU v4-32 equipped with 16 devices, made the previous device-based partitioning approach impractical. The solution explored was to partition along different dimensions, specifically `d_k` and `d_v`, instead of `n_heads_kv`. This adjustment allowed for the expected results on TPU v4-32 ~~, but, curiously, it failed to produce the desired outcome on TPU v3-8. Currently, only one dimension `d_k` is being partitioned. Theoretically, this should result in only half of the attention mechanism being parallelized effectively, implying that the partitioning might not be entirely correct. However, the output aligns with the expected results at this stage. Further debugging efforts are ongoing to resolve this issue.~~. Although this partitioning resulted in slightly different outputs on the v3-8 at first, the discrepancies were minimal. Later, executing `jax.config.update('jax_default_matmul_precision', jax.lax.Precision.HIGHEST)` to increase the computation precision led to identical results thereafter.
+
+### Implementing Beam Search with KVCache
+
+#### Problem Description
+
+When implementing beam search, the challenge arose from needing to manage the correspondence between beams and scores, alongside different KVCache for each beam. 
+
+#### Debugging Process and Solution
+
+Initially, managing beam scores and KV caches was approached with an overly complex strategy. Later, it became clear that simply maintaining beam ids, scores, and `KVCache` together met the rest input requirements of `forward_mistral_lm`. However, modifying the `KVCache` for one beam unexpectedly affected others. This was surprising, given that JAX would allocate new memory addresses if the elements changed. The realization that the `KVCache` — a tuple containing k cache and v cache lists — did not allocate new addresses because of list-level operations like `pop` in Python, explained the confusion. Copying the `KVCache` before making any modifications effectively preserved the uniqueness of each beam's `KVCache`.

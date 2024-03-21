@@ -1,12 +1,10 @@
 from jax import Array
 import jax.numpy as jnp
 
-KVCache = tuple[list[list[Array] | None], list[list[Array] | None]] | None
-
-def left_shift_kv_cache(kv_cache: KVCache) -> KVCache:
-    # KVCache tuple contains 2 lists: k_cache and v_cache for 32 blocks.
-    if kv_cache is not None:
-        k_cache, v_cache = kv_cache
-        k_cache = [jnp.roll(k_cache_blk, -1, axis=2) for k_cache_blk in k_cache]
-        v_cache = [jnp.roll(v_cache_blk, -1, axis=2) for v_cache_blk in v_cache]
-    return k_cache, v_cache
+# shape (2 [fixed number] for k_cache and v_cache, 
+# 32 [fixed number] for 32 blocks,
+# 2 (dynamic) for batch_size,
+# 8 [fixed number] for n_heads_kv，
+# 9 (dynamic) for previous sentence length,
+# 128 [fixed number] for dimension_n)
+KVCache = Array | None

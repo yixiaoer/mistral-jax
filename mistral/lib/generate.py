@@ -1,5 +1,6 @@
 from typing import Callable, NamedTuple
 
+import einops as op
 from jax import Array, lax, vmap
 from jax.nn import softmax
 import jax.numpy as jnp
@@ -29,12 +30,12 @@ def generate(params: MistralLMParams, tokenizer: AutoTokenizer, sentences: list[
             position = jnp.array((batch_len + idx - 1), jnp.int16)
             rotary_values_cur = get_rotary_values_at_position(rotary_values, position)
 
-        # TODO: Beam Search for batch_size > 1
         if beam_nums:
-            input_beams = [Beam(input_ids, jnp.array(1.), kv_cache)] if idx == 0 else sorted(output_beams, key=lambda x: x.score, reverse=True)[: beam_nums]
+            input_beams = [Beam(input_ids, jnp.array(1.), kv_cache)] if idx == 0 else output_beams
+            ids_out, score_out, kv_cache_out = None, None, None
             output_beams = None
 
-            if output_beams and output_beams[0].ids[:,-1] == eos_ids:
+            if output_beams and output_beams[0].ids[:,-1] == jnp.repeat(eos_ids, batch_size):
                 return output_beams[0].ids
 
             for input_beam in input_beams:
@@ -43,7 +44,8 @@ def generate(params: MistralLMParams, tokenizer: AutoTokenizer, sentences: list[
                 logits, kv_cache = forward_mistral_lm(params, input_ids_, qk_mask, rotary_values_cur, kv_cache)
                 logits_ = logits[:, -1]
                 prob_beams, ids_beams = lax.top_k(softmax(logits_), beam_nums)
-                output_beams = prob_beams_n(input_beam, beam_nums, output_beams, prob_beams, ids_beams, kv_cache)
+                ids_out, score_out, kv_cache_out = prob_beams_n(input_beam, beam_nums, ids_out, score_out, kv_cache_out, prob_beams, ids_beams, kv_cache)
+            output_beams = sort_beams(ids_out, score_out, kv_cache_out, beam_nums)
         else:
             logits, kv_cache = forward_mistral_lm(params, input_ids, qk_mask, rotary_values_cur, kv_cache)
             logits = logits[:, -1]
@@ -94,31 +96,37 @@ class Beam(NamedTuple):
     score: Array
     kv_cache: KVCache
 
-def expand_beam(input_beam: Beam, new_id: Array, new_score: Array) -> Beam:
-    new_ids = jnp.concatenate([input_beam.ids, new_id], axis=-1)
-    new_score = input_beam.score * new_score
-    return Beam(new_ids, new_score, input_beam.kv_cache)
-
-vectorized_update_beam = vmap(expand_beam, in_axes=(None, 1, 1), out_axes=0)
-
 def process_fun(input_beam: Beam, ids_beams: Array, ids_scores: Array) -> tuple[Array, Array]:
-    updated_beams = vectorized_update_beam(input_beam, ids_beams, ids_scores)
-    ids_out_beams, score_out_beams = updated_beams.ids, updated_beams.score
-    return ids_out_beams, score_out_beams
+    vectorized_update_beam = vmap(lambda beam, new_id, new_score: 
+        (jnp.concatenate([beam.ids, new_id], axis=-1), beam.score * new_score), 
+        in_axes=(None, 1, 1), out_axes=(0, 0))
+    return vectorized_update_beam(input_beam, ids_beams, ids_scores)
 
-def prob_beams_n(input_beam: Beam, beam_nums: int, output_beams: list[Beam] | None , prob_beams: Array, ids_beams: Array, kv_cache: KVCache) -> list[Beam]:
-    prob_beams = prob_beams.reshape(-1, 1)[None,:]
-    ids_beams = ids_beams.reshape(-1, 1)[None,:]
+def prob_beams_n(input_beam: Beam, beam_nums: int, ids_out: Array | None , score_out: Array | None, kv_cache_out: Array | None, prob_beams: Array, ids_beams: Array, kv_cache: KVCache) -> tuple[Array | None, Array | None, Array | None]:
+    batch_size = len(prob_beams)
+    prob_beams = prob_beams.reshape(batch_size, -1, 1)
+    ids_beams = ids_beams.reshape(batch_size, -1, 1)
     ids_out_beams, score_out_beams = process_fun(input_beam, ids_beams, prob_beams)
 
-    idx_out = jnp.argsort(- score_out_beams, axis=0)
-    score_out_beams = jnp.take_along_axis(score_out_beams, idx_out, axis=0)[:beam_nums]
-    ids_out_beams = jnp.take_along_axis(ids_out_beams, idx_out, axis=0)[: beam_nums]
+    ids_out = ids_out_beams if ids_out is None else jnp.concatenate([ids_out, ids_out_beams], axis=0)
+    score_out = score_out_beams if score_out is None else jnp.concatenate([score_out, score_out_beams], axis=0)
+    kv_cache_ = op.repeat(kv_cache, 'a b c d e f -> (repeat) c (a b d e f)', repeat=5)
+    kv_cache_out = kv_cache_ if kv_cache_out is None else jnp.concatenate([kv_cache_out, kv_cache_], axis=0)
+    # kv_cache_out (15, 2, 2, 32, 8, 9, 128)
+    # idx_out = jnp.argsort(- score_out_beams, axis=0)
+    # score_out_beams = jnp.take_along_axis(score_out_beams, idx_out, axis=0)
+    # ids_out_beams = jnp.take_along_axis(ids_out_beams, idx_out, axis=0)
+    return ids_out, score_out, kv_cache_out
 
-    if output_beams is None:
-        output_beams = [Beam(ids_out_beams[i], score_out_beams[i], (kv_cache[0].copy(), kv_cache[1].copy())) for i in range(ids_out_beams.shape[0])]
-    else:
-        output_beams.extend([Beam(ids_out_beams[i], score_out_beams[i], (kv_cache[0].copy(), kv_cache[1].copy())) for i in range(ids_out_beams.shape[0])])
+def sort_beams(ids_out: Array | None, score_out: Array | None, kv_cache_out: Array | None, beam_nums: int) -> list[Beam]:
+    _, batch_size, sen_len = ids_out.shape
+    idx_out = jnp.argsort(- score_out, axis=0)[:beam_nums]
+    score_out = jnp.take_along_axis(score_out, idx_out, axis=0)
+    ids_out = jnp.take_along_axis(ids_out, idx_out, axis=0)
+    kv_cache_out = jnp.take_along_axis(kv_cache_out, idx_out, axis=0)
+    kv_cache_out = op.rearrange(kv_cache_out, 'g c (a b d e f) -> g a b c d e f', a=2, b=32, d=8, e=sen_len-1, f=128)
+
+    output_beams = [Beam(ids_out[i], score_out[i], kv_cache_out[i]) for i in range(beam_nums)]
     return output_beams
 
 # for beam in output_beams:

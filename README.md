@@ -57,7 +57,7 @@ python generate.py
     - [x] KV cache
     - [x] Left padding
     - [x] Top-K sampling / Top-p / Temperature
-    - [x] Beam search (batch_size = 1)
+    - [x] Beam search
 - [ ] Training
 
 ## Install
@@ -224,4 +224,4 @@ When implementing beam search, the challenge arose from needing to manage the co
 
 #### Debugging Process and Solution
 
-Initially, managing beam scores and KV caches was approached with an overly complex strategy. Later, it became clear that simply maintaining beam ids, scores, and `KVCache` together met the rest input requirements of `forward_mistral_lm`. However, modifying the `KVCache` for one beam unexpectedly affected others. This was surprising, given that JAX would allocate new memory addresses if the elements changed. The realization that the `KVCache` — a tuple containing k cache and v cache lists — did not allocate new addresses because of list-level operations like `pop` in Python, explained the confusion. Copying the `KVCache` before making any modifications effectively preserved the uniqueness of each beam's `KVCache`.
+Initially, managing beam scores and KV caches was approached with an overly complex strategy. Later, it became clear that simply maintaining beam ids, scores, and `KVCache` together met the rest input requirements of `forward_mistral_lm`. However, modifying the `KVCache` for one beam unexpectedly affected others. This was surprising, given that JAX would allocate new memory addresses if the elements changed. The realization that the `KVCache` — a tuple containing k cache and v cache lists — did not allocate new addresses because of list-level operations like `pop` in Python, explained the confusion. ~~Copying the `KVCache` before making any modifications effectively preserved the uniqueness of each beam's `KVCache`.~~ Later, to better facilitate beam search with `batch_size` > 1, the structure of KVCache was revised: previously a tuple of two lists containing 32 `Array`, then transformed into a whole `Array`. This change allows for more convenient updates to the `KVCache` in batch scenarios where multiple sentences sorted based on scores.

@@ -26,7 +26,7 @@ def convert_attention_params(self_attn: MistralAttention) -> AttentionParams:
     k_proj = self_attn.k_proj.weight.data
     v_proj = self_attn.v_proj.weight.data
     o_proj = self_attn.o_proj.weight.data
-    
+
     q_proj_jax = pt2jax(q_proj.T).reshape(d_model, n_heads_kv, n_rep_kv, d_k).transpose(0, 2, 1, 3)
     k_proj_jax = pt2jax(k_proj.T).reshape(d_model, n_heads_kv, d_k)
     v_proj_jax = pt2jax(v_proj.T).reshape(d_model, n_heads_kv, d_v)
@@ -71,15 +71,14 @@ def forward_attention(params: AttentionParams, seq: Array, qk_mask: Array, rotar
     k = forward_rotary_embedding(k, rotary_values=rotary_values)
 
     # KVCache to optimize generation
-    if kv_cache_cur is None:
-        kv_cache_cur = [], []
     if kv_cache_pre is not None:
-        k = jnp.concatenate((kv_cache_pre[0].pop(0), k), axis=2)
-        v = jnp.concatenate((kv_cache_pre[1].pop(0), v), axis=2)
+        layer_n = 0 if kv_cache_cur is None else kv_cache_cur.shape[1]
+        k = jnp.concatenate((kv_cache_pre[0, layer_n, ...], k), axis=-2)
+        v = jnp.concatenate((kv_cache_pre[1, layer_n, ...], v), axis=-2)
 
-    kv_cache_cur[0].append(k)
-    kv_cache_cur[1].append(v)
-
+    k_cache_cur = k[None, ...] if kv_cache_cur is None else jnp.concatenate((kv_cache_cur[0, ...], k[None, ...]), axis=0)
+    v_cache_cur = v[None, ...] if kv_cache_cur is None else jnp.concatenate((kv_cache_cur[1, ...], v[None, ...]), axis=0)
+    kv_cache_cur = jnp.concatenate((k_cache_cur[None, ...], v_cache_cur[None, ...]), axis=0)
     # self-attention
     # (1 batch_size, 4 repetition, 8 head number, 6 seq_len, 6 seq_len)
     # Scaled Dot-Product Attention as 3.2.1 equation(1) in orginal Transformer paper

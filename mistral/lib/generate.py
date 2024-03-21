@@ -112,10 +112,6 @@ def prob_beams_n(input_beam: Beam, beam_nums: int, ids_out: Array | None , score
     score_out = score_out_beams if score_out is None else jnp.concatenate([score_out, score_out_beams], axis=0)
     kv_cache_ = op.repeat(kv_cache, 'a b c d e f -> (repeat) c (a b d e f)', repeat=5)
     kv_cache_out = kv_cache_ if kv_cache_out is None else jnp.concatenate([kv_cache_out, kv_cache_], axis=0)
-    # kv_cache_out (15, 2, 2, 32, 8, 9, 128)
-    # idx_out = jnp.argsort(- score_out_beams, axis=0)
-    # score_out_beams = jnp.take_along_axis(score_out_beams, idx_out, axis=0)
-    # ids_out_beams = jnp.take_along_axis(ids_out_beams, idx_out, axis=0)
     return ids_out, score_out, kv_cache_out
 
 def sort_beams(ids_out: Array | None, score_out: Array | None, kv_cache_out: Array | None, beam_nums: int) -> list[Beam]:
@@ -128,6 +124,3 @@ def sort_beams(ids_out: Array | None, score_out: Array | None, kv_cache_out: Arr
 
     output_beams = [Beam(ids_out[i], score_out[i], kv_cache_out[i]) for i in range(beam_nums)]
     return output_beams
-
-# for beam in output_beams:
-#     print(f"ids: {beam.ids}, score: {beam.score}")

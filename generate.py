@@ -35,7 +35,6 @@ def main():
 
     output_ids = generate(params, tokenizer, sentences, max_length, max_new_tokens)
     output = tokenizer.batch_decode(output_ids, skip_special_tokens=True)
-    # use beam_search to generate when batch_size == 1
     output_ids_bs = generate(params, tokenizer, sentences, max_length, max_new_tokens, beam_nums=5)
     output_bs = tokenizer.batch_decode(output_ids_bs, skip_special_tokens=True)
 

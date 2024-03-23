@@ -1,4 +1,4 @@
-import jax; jax.config.update('jax_spmd_mode', 'allow_all')
+import jax
 
 from functools import partial
 

@@ -11,7 +11,13 @@ from ..model.kvcache import KVCache
 from ..model.mistral_lm import MistralLMParams, forward_mistral_lm
 from ..model.rotary_embedding import RotaryValues, get_rotary_values_at_position, make_rotary_values
 
-def generate(params: MistralLMParams, tokenizer: AutoTokenizer, sentences: list[str], max_length: int, max_new_tokens: int, *, key: Array | None = None, top_k: int | None = None, top_p: float | None = None, temperature: float = 1., beam_nums: int | None = None) -> Array:
+# TODO: eliminate this
+n_heads_kv = 8# model.config.num_key_value_heads
+n_hidden_layers = 32 ## model.config.num_hidden_layers
+k_v_dimension = 128
+k_v_cache_n = 2
+
+def generate(params: MistralLMParams, tokenizer: AutoTokenizer, sentences: list[str], max_length: int, max_new_tokens: int, *, key: Array | None = None, top_k: int | None = None, top_p: float | None = None, temperature: float = 1., beam_nums: int | None = None, sliding_window: int = 4096) -> Array:
     # `max_length` and `max_new_tokens` jointly influence the maximum number of tokens generated
     inputs = tokenizer(sentences, padding=True, return_tensors='jax')
     eos_ids = tokenizer(tokenizer.eos_token, return_tensors='jax').input_ids[0, 1:]  # only eos_ids, not include bos_ids
@@ -20,6 +26,7 @@ def generate(params: MistralLMParams, tokenizer: AutoTokenizer, sentences: list[
     batch_size, batch_len = input_ids.shape
     attn_mask = inputs.attention_mask.astype(jnp.bool_)
     qk_mask = jnp.tril(jnp.einsum('bi,bj->bij', attn_mask, attn_mask))[:, None, None]
+    qk_mask = jnp.triu(qk_mask, k=-sliding_window)
     kv_cache = None
 
     generate_tokens_n = min(*(max_length - jnp.sum(attn_mask == True, axis=1)), max_new_tokens)
@@ -115,12 +122,12 @@ def prob_beams_n(input_beam: Beam, beam_nums: int, ids_out: Array | None , score
     return ids_out, score_out, kv_cache_out
 
 def sort_beams(ids_out: Array | None, score_out: Array | None, kv_cache_out: Array | None, beam_nums: int) -> list[Beam]:
-    _, batch_size, sen_len = ids_out.shape
+    _, batch_size, batch_len = ids_out.shape
     idx_out = jnp.argsort(- score_out, axis=0)[:beam_nums]
     score_out = jnp.take_along_axis(score_out, idx_out, axis=0)
     ids_out = jnp.take_along_axis(ids_out, idx_out, axis=0)
     kv_cache_out = jnp.take_along_axis(kv_cache_out, idx_out, axis=0)
-    kv_cache_out = op.rearrange(kv_cache_out, 'g c (a b d e f) -> g a b c d e f', a=2, b=32, d=8, e=sen_len-1, f=128)
+    kv_cache_out = op.rearrange(kv_cache_out, 'g c (a b d e f) -> g a b c d e f', a=k_v_cache_n, b=n_hidden_layers, d=n_heads_kv, e=batch_len-1, f=k_v_dimension)
 
     output_beams = [Beam(ids_out[i], score_out[i], kv_cache_out[i]) for i in range(beam_nums)]
     return output_beams

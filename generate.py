@@ -33,7 +33,7 @@ def main():
     key = jrand.key(42)
     key, subkey = jrand.split(key)
 
-    output_ids = generate(params, tokenizer, sentences, max_length, max_new_tokens)
+    output_ids = generate(params, tokenizer, sentences, max_length, max_new_tokens, sliding_window=model.config.sliding_window)
     output = tokenizer.batch_decode(output_ids, skip_special_tokens=True)
     output_ids_bs = generate(params, tokenizer, sentences, max_length, max_new_tokens, beam_nums=5)
     output_bs = tokenizer.batch_decode(output_ids_bs, skip_special_tokens=True)

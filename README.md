@@ -19,7 +19,7 @@ If you want to use this Mitral JAX, you can use it like this:
 ```python
 import jax
 import jax.numpy as jnp
-from mistral import convert_mistral_lm_params, forward_mistral_lm, shard_mistral_lm_params
+from mistral.model import convert_mistral_lm_params, forward_mistral_lm, shard_mistral_lm_params
 from transformers import AutoTokenizer, MistralForCausalLM
 
 model = MistralForCausalLM.from_pretrained('mistralai/Mistral-7B-v0.1')

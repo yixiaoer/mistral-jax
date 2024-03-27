@@ -52,7 +52,7 @@ def raw_collate_fn(tokenizer: AutoTokenizer, max_length: int, batch: list[tuple[
     labels_mask = jnp.array(all_label_mask, dtype=jnp.bool_)
     return seq_ids, seq_mask, labels_ids, labels_mask
 
-def test_collate_fn(tokenizer: AutoTokenizer, max_length: int, batch: list[tuple[str, Any]]) -> DataTrain:
+def test_collate_fn(tokenizer: AutoTokenizer, max_length: int, batch: list[tuple[str, Any]]) -> DataTest:
     bos_id = tokenizer.bos_token_id
     eos_id = tokenizer.eos_token_id
     pad_id = tokenizer.pad_token_id

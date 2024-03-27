@@ -1,5 +1,7 @@
 # Mistral JAX
 
+❗ This project is no longer maintained. For new updates, please check out the Mistral 7b v0.2 repository [mistral-v0.2-jax](https://github.com/yixiaoer/mistral-v0.2-jax).
+
 This project is the JAX implementation of [Mistral 7B](https://arxiv.org/pdf/2310.06825.pdf).
 
 It is supported by Cloud TPUs from Google's [TPU Research Cloud (TRC)](https://sites.research.google/trc/about/).
@@ -38,8 +40,8 @@ with jax.default_device(cpu_device):
     params = convert_mistral_lm_params(model)
 params = shard_mistral_lm_params(params)
 
-outputs = forward_mistral_lm(params, input_ids, qk_mask)
-print(outputs)
+logits, kv_cache = forward_mistral_lm(params, input_ids, qk_mask, rotary_values, None)
+print(logits)
 ```
 
 If you want to generate with model, you can run it in the terminal:

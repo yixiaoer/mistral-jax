@@ -7,7 +7,6 @@ from transformers import AutoTokenizer, MistralForCausalLM
 
 jax.config.update('jax_default_matmul_precision', jax.lax.Precision.HIGHEST)
 
-
 from mistral.model.mistral_lm import convert_mistral_lm_params, shard_mistral_lm_params
 from mistral.lib.generate import generate
 
